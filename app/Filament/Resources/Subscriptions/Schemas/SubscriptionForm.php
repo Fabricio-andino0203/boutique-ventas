@@ -15,30 +15,43 @@ class SubscriptionForm
         return $schema
             ->components([
                 Select::make('tenant_id')
+                    ->label('Comercio')
                     ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
                     ->required(),
                 Select::make('plan_id')
+                    ->label('Plan')
                     ->relationship('plan', 'name')
+                    ->searchable()
+                    ->preload()
                     ->required(),
-                TextInput::make('status')
-                    ->required()
-                    ->default('pending'),
-                DateTimePicker::make('starts_at'),
-                DateTimePicker::make('ends_at'),
-                DateTimePicker::make('trial_ends_at'),
-                DateTimePicker::make('cancelled_at'),
+                Select::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'pending' => 'Pendiente',
+                        'active' => 'Activa',
+                        'suspended' => 'Suspendida',
+                        'expired' => 'Vencida',
+                        'cancelled' => 'Cancelada',
+                    ])
+                    ->default('pending')
+                    ->required(),
                 TextInput::make('price')
+                    ->label('Precio contratado')
                     ->required()
                     ->numeric()
                     ->default(0)
-                    ->prefix('$'),
-                TextInput::make('currency')
-                    ->required()
-                    ->default('HNL'),
+                    ->prefix('L'),
+                DateTimePicker::make('starts_at')
+                    ->label('Inicio'),
+                DateTimePicker::make('ends_at')
+                    ->label('Vencimiento'),
+                DateTimePicker::make('trial_ends_at')
+                    ->label('Fin del periodo de prueba'),
                 Textarea::make('notes')
+                    ->label('Observaciones')
                     ->columnSpanFull(),
-                TextInput::make('activated_by')
-                    ->numeric(),
             ]);
     }
 }

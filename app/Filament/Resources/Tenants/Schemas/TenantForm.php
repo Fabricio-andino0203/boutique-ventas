@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Tenants\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class TenantForm
 {
@@ -13,29 +15,53 @@ class TenantForm
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->required(),
+                    ->label('Nombre del comercio')
+                    ->required()
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (?string $state, callable $set, ?string $old, $context) {
+                        if ($context === 'create' && filled($state)) {
+                            $set('slug', Str::slug($state));
+                        }
+                    }),
                 TextInput::make('slug')
-                    ->required(),
-                TextInput::make('business_name'),
+                    ->label('Identificador (slug)')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->helperText('Único por comercio. Se genera del nombre.'),
+                TextInput::make('business_name')
+                    ->label('Razón social'),
                 TextInput::make('email')
-                    ->label('Email address')
+                    ->label('Correo electrónico')
                     ->email(),
                 TextInput::make('phone')
+                    ->label('Teléfono')
                     ->tel(),
-                TextInput::make('address'),
-                TextInput::make('city'),
-                TextInput::make('status')
-                    ->required()
-                    ->default('trial'),
-                TextInput::make('currency')
-                    ->required()
-                    ->default('HNL'),
+                TextInput::make('city')
+                    ->label('Ciudad'),
+                TextInput::make('address')
+                    ->label('Dirección')
+                    ->columnSpanFull(),
+                Select::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'trial' => 'Prueba',
+                        'active' => 'Activo',
+                        'suspended' => 'Suspendido',
+                        'inactive' => 'Inactivo',
+                    ])
+                    ->default('trial')
+                    ->required(),
+                Select::make('currency')
+                    ->label('Moneda')
+                    ->options(['HNL' => 'Lempiras (HNL)', 'USD' => 'Dólares (USD)'])
+                    ->default('HNL')
+                    ->required(),
                 TextInput::make('timezone')
-                    ->required()
-                    ->default('America/Tegucigalpa'),
-                TextInput::make('logo_path'),
-                TextInput::make('settings'),
-                DateTimePicker::make('trial_ends_at'),
+                    ->label('Zona horaria')
+                    ->default('America/Tegucigalpa')
+                    ->required(),
+                DateTimePicker::make('trial_ends_at')
+                    ->label('Fin del periodo de prueba'),
             ]);
     }
 }
