@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Http\Middleware\SetCurrentTenant;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -58,7 +57,6 @@ class BoutiquePanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                SetCurrentTenant::class,
             ]);
     }
 }
