@@ -16,36 +16,28 @@ class PlansTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->searchable(),
-                TextColumn::make('slug')
+                    ->label('Nombre')
                     ->searchable(),
                 TextColumn::make('price')
-                    ->money()
+                    ->label('Precio')
+                    ->money('HNL')
                     ->sortable(),
-                TextColumn::make('currency')
-                    ->searchable(),
                 TextColumn::make('duration_days')
+                    ->label('Duración (días)')
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('is_active')
+                    ->label('Activo')
                     ->boolean(),
                 IconColumn::make('is_public')
+                    ->label('Público')
                     ->boolean(),
                 TextColumn::make('sort_order')
+                    ->label('Orden')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
+            ->defaultSort('sort_order')
             ->recordActions([
                 EditAction::make(),
             ])
