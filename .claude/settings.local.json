@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php --version)",
+      "Bash(composer --version)",
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(winget --version)",
+      "Bash(choco --version)",
+      "Bash(scoop --version)",
+      "Read(//c/Users/Fabri/.config/herd/bin/**)",
+      "Read(//c/Users/Fabri/.config/herd/**)",
+      "Bash(\"/c/Users/Fabri/.config/herd/bin/php84/php.exe\" --version)",
+      "Bash(/c/Users/Fabri/.config/herd/bin/php84/php.exe /c/Users/Fabri/.config/herd/bin/composer.phar --version)"
+    ]
+  }
+}
