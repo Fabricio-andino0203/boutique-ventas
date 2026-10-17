@@ -28,8 +28,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('BOUTIQUE VENTAS')
+            ->brandLogo(asset('images/brand/logo-light.svg'))
+            ->darkModeBrandLogo(asset('images/brand/logo-dark.svg'))
+            ->brandLogoHeight('2.6rem')
+            ->favicon(asset('images/brand/favicon.svg'))
+            ->font('Poppins')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#F43F78'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

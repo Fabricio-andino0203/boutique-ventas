@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 140" width="650" height="140">
+  <g transform="translate(6 10) scale(0.117)">
+    <rect width="1024" height="1024" rx="176" fill="#F43F78"/>
+    <path d="M420 378v-36a92 92 0 0 1 184 0v36" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+    <path d="M370 370h284c17 0 29 12 32 29l39 276c3 22-12 39-34 39H333c-22 0-37-17-34-39l39-276c3-17 15-29 32-29z" fill="#FFFFFF"/>
+    <path d="M657 390l31 284c2 17-8 30-25 35l-8 3 40-1c22 0 37-17 34-39l-39-276c-3-17-15-29-32-29z" fill="#FBC3D2" opacity=".85"/>
+    <text x="512" y="635" text-anchor="middle" font-family="Poppins, Montserrat, Arial, sans-serif" font-size="285" font-weight="700" fill="#F43F78">B</text>
+  </g>
+  <text x="150" y="66" font-family="Poppins, Montserrat, Arial, sans-serif" font-size="50" font-weight="800" letter-spacing="-1" fill="#FFFFFF">BOUTIQUE</text>
+  <text x="152" y="110" font-family="Poppins, Montserrat, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="7" fill="#F43F78">VENTAS</text>
+</svg>
