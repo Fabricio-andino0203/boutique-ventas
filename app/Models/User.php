@@ -47,8 +47,9 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Controla el acceso a cada panel de Filament.
-     * - Panel "admin" (backoffice): solo el propietario del SaaS.
-     * - Otros paneles (boutique): usuarios activos ligados a un comercio.
+     * - Panel "admin" (backoffice): solo el propietario del SaaS, siempre.
+     * - Panel "boutique": usuarios activos ligados a un comercio cuya
+     *   suscripción esté vigente (activación 100% manual del propietario).
      */
     public function canAccessPanel(Panel $panel): bool
     {
@@ -60,6 +61,8 @@ class User extends Authenticatable implements FilamentUser
             return $this->is_super_admin;
         }
 
-        return $this->tenant_id !== null;
+        return $this->tenant_id !== null
+            && $this->tenant !== null
+            && $this->tenant->hasActiveSubscription();
     }
 }

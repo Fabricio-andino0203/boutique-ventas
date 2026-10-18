@@ -56,6 +56,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             }
 
+            // Usuario de boutique cuyo comercio no tiene suscripción vigente: no hay
+            // otro panel al que redirigirlo, así que en vez de un 403 sin salida le
+            // mostramos un mensaje claro para que contacte al administrador.
+            if (! $user->is_super_admin && $user->tenant?->hasActiveSubscription() === false) {
+                return response()->view('errors.subscription-inactive', status: 403);
+            }
+
             return null;
         });
     })->create();

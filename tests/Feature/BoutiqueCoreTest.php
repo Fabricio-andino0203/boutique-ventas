@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Actions\RegisterSale;
 use App\Models\Category;
+use App\Models\Plan;
 use App\Models\Product;
+use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -19,7 +21,28 @@ class BoutiqueCoreTest extends TestCase
 
     private function tenant(string $name = 'Comercio'): Tenant
     {
-        return Tenant::create(['name' => $name, 'slug' => strtolower($name).'-'.uniqid()]);
+        $tenant = Tenant::create(['name' => $name, 'slug' => strtolower($name).'-'.uniqid()]);
+
+        // Los usuarios de boutique solo acceden si su comercio tiene suscripción
+        // vigente; se la damos para poder probar el resto de la funcionalidad.
+        $plan = Plan::create([
+            'name' => 'Mensual',
+            'slug' => 'mensual-'.uniqid(),
+            'price' => 500,
+            'duration_days' => 30,
+        ]);
+
+        Subscription::create([
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'ends_at' => now()->addDays(30),
+            'price' => 500,
+            'currency' => 'HNL',
+        ]);
+
+        return $tenant;
     }
 
     private function boutiqueUser(Tenant $tenant): User

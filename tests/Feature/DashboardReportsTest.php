@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Filament\Boutique\Widgets\SalesChart;
 use App\Filament\Boutique\Widgets\StatsOverview;
 use App\Filament\Boutique\Widgets\TopProducts;
+use App\Models\Plan;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -24,7 +26,27 @@ class DashboardReportsTest extends TestCase
 
     private function tenant(string $name = 'Comercio'): Tenant
     {
-        return Tenant::create(['name' => $name, 'slug' => strtolower($name).'-'.uniqid()]);
+        $tenant = Tenant::create(['name' => $name, 'slug' => strtolower($name).'-'.uniqid()]);
+
+        // El acceso al panel de boutique exige una suscripción vigente.
+        $plan = Plan::create([
+            'name' => 'Mensual',
+            'slug' => 'mensual-'.uniqid(),
+            'price' => 500,
+            'duration_days' => 30,
+        ]);
+
+        Subscription::create([
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'ends_at' => now()->addDays(30),
+            'price' => 500,
+            'currency' => 'HNL',
+        ]);
+
+        return $tenant;
     }
 
     private function boutiqueUser(Tenant $tenant): User
