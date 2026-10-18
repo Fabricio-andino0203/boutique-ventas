@@ -20,6 +20,7 @@ class Purchase extends Model
         'tenant_id',
         'supplier_id',
         'user_id',
+        'number',
         'reference',
         'status',
         'subtotal',
