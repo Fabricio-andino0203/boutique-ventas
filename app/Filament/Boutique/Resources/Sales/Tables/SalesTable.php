@@ -11,6 +11,7 @@ class SalesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['customer', 'user']))
             ->columns([
                 TextColumn::make('number')
                     ->label('N.º')
