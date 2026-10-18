@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Actions\RegisterSale;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -60,6 +59,16 @@ class BoutiqueCoreTest extends TestCase
         $user->update(['is_active' => false]);
 
         $this->assertFalse($user->fresh()->canAccessPanel(Filament::getPanel('boutique')));
+    }
+
+    public function test_usuario_boutique_en_admin_es_redirigido_a_su_panel(): void
+    {
+        $user = $this->boutiqueUser($this->tenant());
+
+        $response = $this->actingAs($user)->get('/admin');
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/tienda', $response->headers->get('Location'));
     }
 
     public function test_crear_registro_asigna_el_comercio_del_usuario(): void

@@ -1,9 +1,12 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,4 +23,39 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Evita un 403 sin salida cuando un usuario autenticado abre un panel que
+        // no le corresponde (p. ej. un usuario de boutique entrando a /admin):
+        // lo redirige al panel que sí puede usar.
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
+            if ($e->getStatusCode() !== 403 || $request->expectsJson()) {
+                return null;
+            }
+
+            $user = Auth::user();
+
+            if ($user === null) {
+                return null;
+            }
+
+            foreach (Filament::getPanels() as $panel) {
+                $path = trim($panel->getPath(), '/');
+
+                if ($path === '' || ! $request->is($path, $path.'/*')) {
+                    continue;
+                }
+
+                if ($user->canAccessPanel($panel)) {
+                    continue;
+                }
+
+                foreach (Filament::getPanels() as $candidate) {
+                    if ($candidate->getId() !== $panel->getId() && $user->canAccessPanel($candidate)) {
+                        return redirect()->to($candidate->getUrl());
+                    }
+                }
+            }
+
+            return null;
+        });
     })->create();
