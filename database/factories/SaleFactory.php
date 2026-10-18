@@ -18,7 +18,15 @@ class SaleFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'status' => 'completed',
+            'subtotal' => 0,
+            'discount' => 0,
+            'tax' => 0,
+            'total' => 0,
+            'payment_method' => 'cash',
+            'amount_paid' => 0,
+            'change' => 0,
+            'sold_at' => now(),
         ];
     }
 }

@@ -20,6 +20,7 @@ class SaleReturn extends Model
         'tenant_id',
         'sale_id',
         'user_id',
+        'number',
         'status',
         'reason',
         'total',

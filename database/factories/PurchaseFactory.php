@@ -18,7 +18,13 @@ class PurchaseFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'supplier_id' => null,
+            'status' => 'received',
+            'subtotal' => 0,
+            'tax' => 0,
+            'total' => 0,
+            'purchased_at' => now(),
+            'received_at' => now(),
         ];
     }
 }
