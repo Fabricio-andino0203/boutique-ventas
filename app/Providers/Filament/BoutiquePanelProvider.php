@@ -6,10 +6,12 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -32,8 +34,38 @@ class BoutiquePanelProvider extends PanelProvider
             ->brandLogoHeight('2.6rem')
             ->favicon(asset('images/brand/favicon.svg'))
             ->font('Poppins')
+            ->viteTheme('resources/css/filament/boutique/theme.css')
             ->colors([
                 'primary' => Color::hex('#F43F78'),
+                'gray' => Color::Stone,
+                'danger' => Color::Red,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'info' => Color::Sky,
+            ])
+            ->sidebarCollapsibleOnDesktop()
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('Ventas')
+                    ->icon(Heroicon::OutlinedReceiptPercent),
+                NavigationGroup::make()
+                    ->label('Catálogo')
+                    ->icon(Heroicon::OutlinedTag),
+                NavigationGroup::make()
+                    ->label('Inventario')
+                    ->icon(Heroicon::OutlinedArchiveBox),
+                NavigationGroup::make()
+                    ->label('Compras')
+                    ->icon(Heroicon::OutlinedTruck),
+                NavigationGroup::make()
+                    ->label('Contactos')
+                    ->icon(Heroicon::OutlinedUsers),
+                NavigationGroup::make()
+                    ->label('Caja')
+                    ->icon(Heroicon::OutlinedBanknotes),
+                NavigationGroup::make()
+                    ->label('Finanzas')
+                    ->icon(Heroicon::OutlinedChartPie),
             ])
             ->discoverResources(in: app_path('Filament/Boutique/Resources'), for: 'App\Filament\Boutique\Resources')
             ->discoverPages(in: app_path('Filament/Boutique/Pages'), for: 'App\Filament\Boutique\Pages')
