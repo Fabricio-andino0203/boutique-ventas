@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\TenantFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -71,5 +73,25 @@ class Tenant extends Model
         return $this->hasOne(Subscription::class)
             ->where('status', 'active')
             ->latestOfMany();
+    }
+
+    /**
+     * Indica si el comercio tiene una suscripción vigente: estado "active" y sin
+     * vencimiento o con vencimiento posterior al momento actual en Honduras.
+     *
+     * Las suscripciones se activan SIEMPRE de forma manual por el propietario;
+     * este método nunca cambia estados, solo consulta el acceso al panel.
+     */
+    public function hasActiveSubscription(): bool
+    {
+        $now = CarbonImmutable::now('America/Tegucigalpa');
+
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where(function (Builder $query) use ($now): void {
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>=', $now);
+            })
+            ->exists();
     }
 }
