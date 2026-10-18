@@ -42,6 +42,9 @@ RUN composer dump-autoload --optimize --no-dev
 # Permisos de escritura para Laravel
 RUN chmod -R ug+rw storage bootstrap/cache
 
+# Afinamiento de PHP (OPcache / realpath cache)
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+
 # Configuración del servidor y arranque
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
