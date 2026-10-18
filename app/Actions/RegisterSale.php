@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\CashRegister;
 use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\Sale;
@@ -65,8 +66,14 @@ class RegisterSale
             $total = max(0.0, $subtotal - $discount);
             $amountPaid = (float) ($meta['amount_paid'] ?? $total);
 
+            // Liga la venta a la caja abierta del vendedor si no se indicó una explícita.
+            $cashRegisterId = $meta['cash_register_id'] ?? CashRegister::query()
+                ->where('opened_by', Auth::id())
+                ->where('status', 'open')
+                ->value('id');
+
             $sale = Sale::create([
-                'cash_register_id' => $meta['cash_register_id'] ?? null,
+                'cash_register_id' => $cashRegisterId,
                 'customer_id' => $meta['customer_id'] ?? null,
                 'user_id' => Auth::id(),
                 'status' => 'completed',

@@ -3,6 +3,7 @@
 namespace App\Filament\Boutique\Pages;
 
 use App\Actions\RegisterSale;
+use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\ProductVariant;
 use BackedEnum;
@@ -10,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
@@ -81,6 +83,19 @@ class Pos extends Page
     public function customers(): Collection
     {
         return Customer::query()->where('is_active', true)->orderBy('name')->get();
+    }
+
+    /**
+     * Caja abierta del vendedor actual, a la que se ligarán las ventas.
+     */
+    #[Computed]
+    public function openCashRegister(): ?CashRegister
+    {
+        return CashRegister::query()
+            ->where('opened_by', Auth::id())
+            ->where('status', 'open')
+            ->latest('opened_at')
+            ->first();
     }
 
     public function addToCart(int $variantId): void
@@ -175,6 +190,7 @@ class Pos extends Page
                 'payment_method' => $this->paymentMethod,
                 'amount_paid' => (float) $this->amountPaid,
                 'discount' => (float) $this->discount,
+                'cash_register_id' => $this->openCashRegister?->id,
             ]);
         } catch (ValidationException $e) {
             Notification::make()
