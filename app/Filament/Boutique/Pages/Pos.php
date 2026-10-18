@@ -7,6 +7,7 @@ use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\ProductVariant;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -206,6 +207,12 @@ class Pos extends Page
             ->title("Venta {$sale->number} registrada")
             ->body('Total: L '.number_format($sale->total, 2))
             ->success()
+            ->actions([
+                Action::make('recibo')
+                    ->label('Imprimir recibo')
+                    ->icon(Heroicon::OutlinedPrinter)
+                    ->url(route('boutique.sales.receipt', $sale), shouldOpenInNewTab: true),
+            ])
             ->send();
 
         $this->reset(['cart', 'search', 'customerId', 'amountPaid', 'discount']);

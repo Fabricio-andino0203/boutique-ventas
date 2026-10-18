@@ -40,26 +40,37 @@ class PurchaseForm
                             ->label('Productos a ingresar')
                             ->addActionLabel('Agregar producto')
                             ->minItems(1)
-                            ->columns(3)
+                            ->columns(12)
                             ->schema([
                                 Select::make('product_variant_id')
                                     ->label('Producto / variante')
                                     ->options(fn (): array => static::variantOptions())
                                     ->searchable()
                                     ->required()
-                                    ->columnSpan(1),
+                                    ->columnSpan([
+                                        'default' => 12,
+                                        'md' => 6,
+                                    ]),
                                 TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->numeric()
                                     ->minValue(1)
                                     ->default(1)
-                                    ->required(),
+                                    ->required()
+                                    ->columnSpan([
+                                        'default' => 6,
+                                        'md' => 2,
+                                    ]),
                                 TextInput::make('unit_cost')
                                     ->label('Costo unitario')
                                     ->numeric()
                                     ->minValue(0)
                                     ->prefix('L')
-                                    ->required(),
+                                    ->required()
+                                    ->columnSpan([
+                                        'default' => 6,
+                                        'md' => 4,
+                                    ]),
                             ]),
                     ]),
             ]);

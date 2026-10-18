@@ -2,7 +2,10 @@
 
 namespace App\Filament\Boutique\Resources\Sales\Tables;
 
+use App\Models\Sale;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -44,6 +47,11 @@ class SalesTable
             ->defaultSort('sold_at', 'desc')
             ->recordActions([
                 ViewAction::make(),
+                Action::make('recibo')
+                    ->label('Imprimir recibo')
+                    ->icon(Heroicon::OutlinedPrinter)
+                    ->url(fn (Sale $record): string => route('boutique.sales.receipt', $record))
+                    ->openUrlInNewTab(),
             ]);
     }
 }
