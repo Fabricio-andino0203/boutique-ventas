@@ -241,6 +241,7 @@ class ReportesUtilidadTest extends TestCase
     public function test_pagina_responde_por_http_para_boutique(): void
     {
         $tenant = $this->tenant('A');
+        $tenant->update(['status' => 'trial', 'trial_ends_at' => Carbon::now()->addDays(10)]);
         $user = $this->boutiqueUser($tenant);
 
         $this->actingAs($user)->get('/tienda/reportes')->assertOk();

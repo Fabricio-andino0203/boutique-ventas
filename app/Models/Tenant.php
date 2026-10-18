@@ -94,4 +94,26 @@ class Tenant extends Model
             })
             ->exists();
     }
+
+    /**
+     * Indica si el comercio está dentro de un período de prueba vigente: estado
+     * "trial" y con fecha de fin de prueba posterior al momento actual.
+     *
+     * El propietario define manualmente la prueba; esto solo consulta el acceso.
+     */
+    public function hasValidTrial(): bool
+    {
+        return $this->status === 'trial'
+            && $this->trial_ends_at !== null
+            && $this->trial_ends_at->gte(CarbonImmutable::now('America/Tegucigalpa'));
+    }
+
+    /**
+     * Indica si el comercio puede usar el panel: suscripción vigente O prueba
+     * vigente. Ninguna de las dos se activa de forma automática por el cliente.
+     */
+    public function hasActiveAccess(): bool
+    {
+        return $this->hasActiveSubscription() || $this->hasValidTrial();
+    }
 }

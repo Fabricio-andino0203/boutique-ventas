@@ -63,6 +63,6 @@ class User extends Authenticatable implements FilamentUser
 
         return $this->tenant_id !== null
             && $this->tenant !== null
-            && $this->tenant->hasActiveSubscription();
+            && $this->tenant->hasActiveAccess();
     }
 }

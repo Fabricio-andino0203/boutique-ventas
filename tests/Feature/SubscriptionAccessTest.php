@@ -108,6 +108,29 @@ class SubscriptionAccessTest extends TestCase
         $this->assertTrue($tenant->hasActiveSubscription());
     }
 
+    public function test_boutique_en_prueba_vigente_accede_sin_suscripcion(): void
+    {
+        $tenant = $this->tenant();
+        $tenant->update(['status' => 'trial', 'trial_ends_at' => now()->addDays(10)]);
+        $user = $this->boutiqueUser($tenant);
+
+        $this->assertFalse($tenant->hasActiveSubscription());
+        $this->assertTrue($tenant->hasValidTrial());
+        $this->assertTrue($user->canAccessPanel(Filament::getPanel('boutique')));
+
+        $this->actingAs($user)->get('/tienda')->assertOk();
+    }
+
+    public function test_boutique_con_prueba_vencida_no_accede(): void
+    {
+        $tenant = $this->tenant();
+        $tenant->update(['status' => 'trial', 'trial_ends_at' => now()->subDay()]);
+        $user = $this->boutiqueUser($tenant);
+
+        $this->assertFalse($tenant->hasValidTrial());
+        $this->assertFalse($user->canAccessPanel(Filament::getPanel('boutique')));
+    }
+
     public function test_super_admin_siempre_accede_a_admin(): void
     {
         $admin = User::create([
