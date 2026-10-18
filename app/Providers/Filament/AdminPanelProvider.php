@@ -36,7 +36,6 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.6rem')
             ->favicon(asset('images/brand/favicon.svg'))
             ->font('Poppins')
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'primary' => Color::hex('#F43F78'),
                 'gray' => Color::Stone,
