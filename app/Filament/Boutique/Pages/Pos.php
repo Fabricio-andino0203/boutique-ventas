@@ -22,6 +22,10 @@ class Pos extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Operación diaria';
+
+    protected static ?string $navigationLabel = 'Punto de venta';
+
     protected static ?int $navigationSort = -10;
 
     /**

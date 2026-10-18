@@ -2,12 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Boutique\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -45,26 +45,20 @@ class BoutiquePanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('Ventas')
-                    ->icon(Heroicon::OutlinedReceiptPercent),
+                    ->label('Operación diaria')
+                    ->icon(Heroicon::OutlinedShoppingCart),
                 NavigationGroup::make()
-                    ->label('Catálogo')
-                    ->icon(Heroicon::OutlinedTag),
-                NavigationGroup::make()
-                    ->label('Inventario')
+                    ->label('Tu catálogo')
                     ->icon(Heroicon::OutlinedArchiveBox),
                 NavigationGroup::make()
-                    ->label('Compras')
-                    ->icon(Heroicon::OutlinedTruck),
-                NavigationGroup::make()
-                    ->label('Contactos')
-                    ->icon(Heroicon::OutlinedUsers),
-                NavigationGroup::make()
-                    ->label('Caja')
+                    ->label('Finanzas')
                     ->icon(Heroicon::OutlinedBanknotes),
                 NavigationGroup::make()
-                    ->label('Finanzas')
+                    ->label('Reportes')
                     ->icon(Heroicon::OutlinedChartPie),
+                NavigationGroup::make()
+                    ->label('Administración')
+                    ->icon(Heroicon::OutlinedCog6Tooth),
             ])
             ->discoverResources(in: app_path('Filament/Boutique/Resources'), for: 'App\Filament\Boutique\Resources')
             ->discoverPages(in: app_path('Filament/Boutique/Pages'), for: 'App\Filament\Boutique\Pages')

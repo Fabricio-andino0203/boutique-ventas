@@ -20,7 +20,7 @@ class SupplierResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Contactos';
+    protected static string|\UnitEnum|null $navigationGroup = 'Administración';
 
     protected static ?int $navigationSort = 2;
 

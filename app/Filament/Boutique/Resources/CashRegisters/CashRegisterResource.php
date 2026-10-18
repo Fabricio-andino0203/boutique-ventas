@@ -16,7 +16,7 @@ class CashRegisterResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Caja';
+    protected static string|\UnitEnum|null $navigationGroup = 'Finanzas';
 
     protected static ?int $navigationSort = 1;
 

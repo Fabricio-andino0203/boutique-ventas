@@ -20,9 +20,9 @@ class InventoryMovementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Inventario';
+    protected static string|\UnitEnum|null $navigationGroup = 'Tu catálogo';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function canCreate(): bool
     {
