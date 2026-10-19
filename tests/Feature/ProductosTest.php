@@ -103,6 +103,35 @@ class ProductosTest extends TestCase
         $this->assertSame('999', $variant->barcode);
     }
 
+    public function test_genera_todas_las_combinaciones_de_variantes(): void
+    {
+        $options = [
+            ['name' => 'Talla', 'values' => ['S', 'M', 'L']],
+            ['name' => 'Color', 'values' => ['Rojo', 'Azul']],
+        ];
+
+        $variants = ProductForm::buildVariantsFromOptions(
+            $options,
+            ['price' => 500, 'cost' => 200, 'stock' => 3],
+            ' - ',
+            'Camisa',
+        );
+
+        $this->assertCount(6, $variants);
+        $this->assertSame('Camisa - S - Rojo', $variants[0]['name']);
+        $this->assertSame('S', $variants[0]['size']);
+        $this->assertSame('Rojo', $variants[0]['color']);
+        $this->assertEquals(500.0, (float) $variants[0]['price']);
+        $this->assertSame(3, $variants[0]['stock_quantity']);
+        $this->assertSame(['Talla' => 'S', 'Color' => 'Rojo'], $variants[0]['options']);
+    }
+
+    public function test_combinaciones_vacias_sin_opciones_validas(): void
+    {
+        $this->assertSame([], ProductForm::cartesian([]));
+        $this->assertSame([], ProductForm::cartesian([['name' => 'Talla', 'values' => []]]));
+    }
+
     public function test_aislamiento_de_productos_por_comercio(): void
     {
         $a = $this->tenant('A');

@@ -8,6 +8,7 @@ use App\Support\Barcode;
 use App\Support\CurrentTenant;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -357,6 +358,138 @@ class ProductForm
                 ->imageResizeTargetHeight(1000)
                 ->columnSpanFull(),
         ];
+    }
+
+    /**
+     * Fila de variante GENERADA (para el repeater del generador de combinaciones).
+     * Incluye el nombre compuesto y las opciones (ocultas) para guardarlas.
+     *
+     * @return array<int, Component>
+     */
+    public static function generatedVariantFields(): array
+    {
+        return [
+            TextInput::make('name')->label('Nombre')->columnSpan(2),
+            Hidden::make('options'),
+            Hidden::make('size'),
+            Hidden::make('color'),
+            Hidden::make('model'),
+            TextInput::make('price')->label('Precio')->numeric()->default(0)->prefix('L')->live(onBlur: true),
+            TextInput::make('cost')->label('Costo')->numeric()->default(0)->prefix('L')->live(onBlur: true),
+            self::utilityPlaceholder('price', 'cost'),
+            TextInput::make('wholesale_price')->label('Mayorista')->numeric()->prefix('L'),
+            TextInput::make('stock_quantity')->label('Existencias')->numeric()->default(0),
+            TextInput::make('min_stock')->label('Stock mínimo')->numeric()->default(0),
+            TextInput::make('barcode')
+                ->label('Código de barras')
+                ->suffixAction(
+                    Action::make('generarCodigoGenerada')
+                        ->icon(Heroicon::OutlinedSparkles)
+                        ->tooltip('Generar código')
+                        ->action(fn (Set $set) => $set('barcode', Barcode::generateEan13()))
+                ),
+            FileUpload::make('image_path')
+                ->label('Imagen de la variante')
+                ->image()
+                ->disk(config('filesystems.media'))
+                ->directory('variants')
+                ->visibility('public')
+                ->maxSize(5120)
+                ->imageResizeMode('contain')
+                ->imageResizeTargetWidth(1000)
+                ->imageResizeTargetHeight(1000)
+                ->columnSpanFull(),
+        ];
+    }
+
+    /**
+     * Producto cartesiano de las opciones de variante.
+     * Entrada: [['name'=>'Talla','values'=>['S','M']], ['name'=>'Color','values'=>['Rojo']]]
+     * Salida:  [['Talla'=>'S','Color'=>'Rojo'], ['Talla'=>'M','Color'=>'Rojo']]
+     *
+     * @param  array<int, array<string, mixed>>  $options
+     * @return array<int, array<string, string>>
+     */
+    public static function cartesian(array $options): array
+    {
+        $result = [[]];
+
+        foreach ($options as $option) {
+            $name = trim((string) ($option['name'] ?? ''));
+            $values = array_values(array_filter((array) ($option['values'] ?? []), fn ($v): bool => filled($v)));
+
+            if ($name === '' || $values === []) {
+                continue;
+            }
+
+            $next = [];
+            foreach ($result as $combo) {
+                foreach ($values as $value) {
+                    $next[] = $combo + [$name => (string) $value];
+                }
+            }
+            $result = $next;
+        }
+
+        return $result === [[]] ? [] : $result;
+    }
+
+    /**
+     * Construye las variantes (para el repeater) a partir de las opciones,
+     * los valores por defecto y el separador de nombre.
+     *
+     * @param  array<int, array<string, mixed>>  $options
+     * @param  array<string, mixed>  $defaults
+     * @return array<int, array<string, mixed>>
+     */
+    public static function buildVariantsFromOptions(array $options, array $defaults, string $separator, string $productName): array
+    {
+        $separator = $separator !== '' ? $separator : ' - ';
+        $price = (float) ($defaults['price'] ?? 0);
+        $cost = (float) ($defaults['cost'] ?? 0);
+        $stock = (int) ($defaults['stock'] ?? 0);
+
+        $variants = [];
+        foreach (self::cartesian($options) as $combo) {
+            $valuesText = implode($separator, array_values($combo));
+
+            $variants[] = [
+                'name' => trim($productName.$separator.$valuesText),
+                'options' => $combo,
+                'size' => self::pickOption($combo, ['talla', 'size', 'tamaño', 'tamano']),
+                'color' => self::pickOption($combo, ['color']),
+                'model' => self::pickOption($combo, ['modelo', 'model', 'material', 'estilo']),
+                'price' => $price,
+                'cost' => $cost,
+                'wholesale_price' => null,
+                'stock_quantity' => $stock,
+                'min_stock' => 0,
+                'sku' => null,
+                'barcode' => null,
+                'image_path' => null,
+                'is_active' => true,
+            ];
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Busca en la combinación un valor cuyo nombre de opción coincida con alguno
+     * de los nombres dados (para mapear a las columnas size/color/model).
+     *
+     * @param  array<string, string>  $combo
+     * @param  array<int, string>  $names
+     */
+    private static function pickOption(array $combo, array $names): ?string
+    {
+        foreach ($combo as $optionName => $value) {
+            if (in_array(mb_strtolower(trim((string) $optionName)), $names, true)) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

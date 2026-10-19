@@ -4,12 +4,17 @@ namespace App\Filament\Boutique\Resources\Products\Pages;
 
 use App\Filament\Boutique\Resources\Products\ProductResource;
 use App\Filament\Boutique\Resources\Products\Schemas\ProductForm;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 
@@ -87,15 +92,58 @@ class CreateProduct extends CreateRecord
                 ->icon(Heroicon::OutlinedSquares2x2)
                 ->visible(fn (Get $get): bool => $get('type') === 'variable')
                 ->schema([
+                    Section::make('Opciones de variante')
+                        ->description('Creá opciones como Color, Talla o Material (máximo 3). Escribí cada valor y presioná Enter.')
+                        ->schema([
+                            Repeater::make('variant_options')
+                                ->hiddenLabel()
+                                ->dehydrated(false)
+                                ->live()
+                                ->maxItems(3)
+                                ->defaultItems(1)
+                                ->addActionLabel('Agregar opción')
+                                ->schema([
+                                    TextInput::make('name')
+                                        ->label('Nombre de la opción')
+                                        ->placeholder('Ej: Color, Talla, Material'),
+                                    TagsInput::make('values')
+                                        ->label('Valores')
+                                        ->placeholder('Escribí un valor y Enter')
+                                        ->reorderable(),
+                                ])
+                                ->columns(2),
+                        ]),
+                    Section::make('Valores predeterminados')
+                        ->description('Se aplican a todas las variantes generadas (podés cambiarlos después).')
+                        ->schema([
+                            TextInput::make('gen_price')->label('Precio por defecto')->numeric()->default(0)->prefix('L')->dehydrated(false),
+                            TextInput::make('gen_cost')->label('Costo por defecto')->numeric()->default(0)->prefix('L')->dehydrated(false),
+                            TextInput::make('gen_stock')->label('Stock por defecto')->numeric()->default(0)->dehydrated(false),
+                            TextInput::make('gen_separator')->label('Separador de nombre')->default(' - ')->dehydrated(false),
+                        ])
+                        ->columns(2),
+                    Actions::make([
+                        Action::make('generar')
+                            ->label('Generar combinaciones')
+                            ->icon(Heroicon::OutlinedSparkles)
+                            ->action(function (Get $get, Set $set): void {
+                                $variants = ProductForm::buildVariantsFromOptions(
+                                    (array) $get('variant_options'),
+                                    ['price' => $get('gen_price'), 'cost' => $get('gen_cost'), 'stock' => $get('gen_stock')],
+                                    (string) ($get('gen_separator') ?? ' - '),
+                                    (string) $get('name'),
+                                );
+                                $set('variants', $variants);
+                            }),
+                    ]),
                     Repeater::make('variants')
-                        ->label('Variantes del producto')
+                        ->label('Variantes generadas')
                         ->relationship()
-                        ->schema(ProductForm::variantFields())
+                        ->schema(ProductForm::generatedVariantFields())
                         ->columns(3)
-                        ->defaultItems(1)
-                        ->minItems(1)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): string => trim(($state['color'] ?? '').' '.($state['size'] ?? '').' '.($state['model'] ?? '')) ?: 'Variante')
+                        ->defaultItems(0)
+                        ->collapsed()
+                        ->itemLabel(fn (array $state): string => $state['name'] ?? 'Variante')
                         ->addActionLabel('Agregar variante'),
                 ]),
         ];
