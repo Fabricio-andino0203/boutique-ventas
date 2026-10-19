@@ -4,6 +4,7 @@ namespace App\Filament\Boutique\Resources\Products\Schemas;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\Barcode;
 use App\Support\CurrentTenant;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -94,10 +95,22 @@ class ProductForm
                 ->label('Código')
                 ->maxLength(255)
                 ->placeholder('Interno (opcional)'),
-            TextInput::make('unit')
+            Select::make('unit')
                 ->label('Unidad')
-                ->placeholder('Ej. Unidad, Par, Juego')
-                ->maxLength(50),
+                ->options([
+                    'Unidad' => 'Unidad',
+                    'Par' => 'Par',
+                    'Juego completo' => 'Juego completo',
+                    'Set' => 'Set',
+                    'Docena' => 'Docena',
+                    'Paquete' => 'Paquete',
+                    'Caja' => 'Caja',
+                    'Metro' => 'Metro',
+                    'Kilogramo' => 'Kilogramo',
+                ])
+                ->searchable()
+                ->default('Unidad')
+                ->placeholder('Seleccioná una unidad'),
             Textarea::make('description')
                 ->label('Descripción')
                 ->rows(2)
@@ -118,7 +131,7 @@ class ProductForm
                 Action::make('generarCodigo')
                     ->icon(Heroicon::OutlinedSparkles)
                     ->tooltip('Generar código')
-                    ->action(fn (Set $set) => $set('barcode', (string) random_int(1_000_000_000_000, 9_999_999_999_999)))
+                    ->action(fn (Set $set) => $set('barcode', Barcode::generateEan13()))
             );
     }
 
@@ -222,7 +235,14 @@ class ProductForm
             TextInput::make('stock_quantity')->label('Existencias')->numeric()->default(0),
             TextInput::make('min_stock')->label('Stock mínimo')->numeric()->default(0),
             TextInput::make('sku')->label('Código (SKU)'),
-            TextInput::make('barcode')->label('Código de barras'),
+            TextInput::make('barcode')
+                ->label('Código de barras')
+                ->suffixAction(
+                    Action::make('generarCodigoVariante')
+                        ->icon(Heroicon::OutlinedSparkles)
+                        ->tooltip('Generar código')
+                        ->action(fn (Set $set) => $set('barcode', Barcode::generateEan13()))
+                ),
             FileUpload::make('image_path')
                 ->label('Imagen de la variante')
                 ->image()
