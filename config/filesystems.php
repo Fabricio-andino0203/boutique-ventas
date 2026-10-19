@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Disco de medios (imágenes de catálogo)
+    |--------------------------------------------------------------------------
+    |
+    | Disco usado para imágenes de categorías/productos. En desarrollo apunta
+    | a "public" (disco local); en producción a "supabase" (persistente).
+    |
+    */
+
+    'media' => env('MEDIA_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -56,6 +68,21 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Supabase Storage (compatible con S3). Persistente entre despliegues.
+        'supabase' => [
+            'driver' => 's3',
+            'key' => env('SUPABASE_S3_KEY'),
+            'secret' => env('SUPABASE_S3_SECRET'),
+            'region' => env('SUPABASE_S3_REGION', 'us-west-2'),
+            'bucket' => env('SUPABASE_S3_BUCKET', 'media'),
+            'endpoint' => env('SUPABASE_S3_ENDPOINT', 'https://uzdzhjvipzlfqxefitjb.supabase.co/storage/v1/s3'),
+            'url' => env('SUPABASE_S3_URL', 'https://uzdzhjvipzlfqxefitjb.supabase.co/storage/v1/object/public/'.env('SUPABASE_S3_BUCKET', 'media')),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
