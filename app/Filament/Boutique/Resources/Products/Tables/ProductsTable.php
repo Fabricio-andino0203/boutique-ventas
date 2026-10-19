@@ -25,8 +25,9 @@ class ProductsTable
                     ->defaultImageUrl(asset('images/brand/favicon.svg')),
                 TextColumn::make('code')
                     ->label('Código')
+                    ->getStateUsing(fn ($record): ?string => $record->code ?: $record->barcode)
                     ->placeholder('—')
-                    ->searchable()
+                    ->searchable(['code', 'barcode'])
                     ->toggleable(),
                 TextColumn::make('name')
                     ->label('Producto')
