@@ -11,7 +11,27 @@
       "Read(//c/Users/Fabri/.config/herd/bin/**)",
       "Read(//c/Users/Fabri/.config/herd/**)",
       "Bash(\"/c/Users/Fabri/.config/herd/bin/php84/php.exe\" --version)",
-      "Bash(/c/Users/Fabri/.config/herd/bin/php84/php.exe /c/Users/Fabri/.config/herd/bin/composer.phar --version)"
+      "Bash(/c/Users/Fabri/.config/herd/bin/php84/php.exe /c/Users/Fabri/.config/herd/bin/composer.phar --version)",
+      "Bash(rm -rf C:/Users/Fabri/AppData/Local/Temp/claude/C--Users-Fabri-Desktop-ANDINO-SOTFWARE-BOUTIQUE/d6f0446c-1c20-462c-9041-00002d6ee345/scratchpad/pm-clone)",
+      "Bash(git clone *)",
+      "Bash(rm -rf 'C:/Users/Fabri/Desktop/ANDINO SOTFWARE/BOUTIQUE/.claude/skills/prompt-master')",
+      "Bash(mkdir -p 'C:/Users/Fabri/Desktop/ANDINO SOTFWARE/BOUTIQUE/.claude/skills/prompt-master/references')",
+      "Bash(cp C:/Users/Fabri/AppData/Local/Temp/claude/C--Users-Fabri-Desktop-ANDINO-SOTFWARE-BOUTIQUE/d6f0446c-1c20-462c-9041-00002d6ee345/scratchpad/pm-clone/SKILL.md 'C:/Users/Fabri/Desktop/ANDINO SOTFWARE/BOUTIQUE/.claude/skills/prompt-master/')",
+      "Bash(cp C:/Users/Fabri/AppData/Local/Temp/claude/C--Users-Fabri-Desktop-ANDINO-SOTFWARE-BOUTIQUE/d6f0446c-1c20-462c-9041-00002d6ee345/scratchpad/pm-clone/README.md 'C:/Users/Fabri/Desktop/ANDINO SOTFWARE/BOUTIQUE/.claude/skills/prompt-master/')",
+      "Bash(cp C:/Users/Fabri/AppData/Local/Temp/claude/C--Users-Fabri-Desktop-ANDINO-SOTFWARE-BOUTIQUE/d6f0446c-1c20-462c-9041-00002d6ee345/scratchpad/pm-clone/LICENSE 'C:/Users/Fabri/Desktop/ANDINO SOTFWARE/BOUTIQUE/.claude/skills/prompt-master/')",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node extract.js \"C:/Users/Fabri/Desktop/ANDINO SOTFWARE/POPRUSTA DE MODULOS Y FUNCIONANLIDADES.pdf\")",
+      "Bash(command -v pdftoppm gs magick convert mutool)",
+      "WebFetch(domain:scrampi.com)",
+      "Bash(node render.js \"C:/Users/Fabri/Desktop/ANDINO SOTFWARE/POPRUSTA DE MODULOS Y FUNCIONANLIDADES.pdf\" \"./out\")",
+      "Bash(grep -E '\\\\$table->')",
+      "mcp__supabase__execute_sql",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(railway up *)"
     ]
   }
 }

@@ -51,6 +51,9 @@ class BoutiquePanelProvider extends PanelProvider
                     ->label('Tu catálogo')
                     ->icon(Heroicon::OutlinedArchiveBox),
                 NavigationGroup::make()
+                    ->label('Carga masiva')
+                    ->icon(Heroicon::OutlinedArrowUpTray),
+                NavigationGroup::make()
                     ->label('Finanzas')
                     ->icon(Heroicon::OutlinedBanknotes),
                 NavigationGroup::make()
