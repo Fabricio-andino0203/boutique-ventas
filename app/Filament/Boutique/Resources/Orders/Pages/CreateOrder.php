@@ -4,6 +4,7 @@ namespace App\Filament\Boutique\Resources\Orders\Pages;
 
 use App\Filament\Boutique\Resources\Orders\OrderResource;
 use App\Services\OrderService;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,7 +40,17 @@ class CreateOrder extends CreateRecord
 
         $abono = (float) ($this->data['abono'] ?? 0);
         if ($abono > 0) {
-            $service->registerPayment($order, min($abono, (float) $order->total), 'cash');
+            try {
+                $service->registerPayment($order, min($abono, (float) $order->total), 'cash');
+            } catch (\Throwable $e) {
+                // El pedido queda creado y sin pago: el abono/venta puede registrarse
+                // luego desde la ficha (p. ej. cuando llegue el stock).
+                Notification::make()
+                    ->title('Pedido creado, pero no se registró el abono')
+                    ->body($e->getMessage())
+                    ->warning()
+                    ->send();
+            }
         }
     }
 

@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Boutique\Resources\Orders\Pages\CreateOrder;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\OrderService;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PedidosTest extends TestCase
@@ -33,7 +37,7 @@ class PedidosTest extends TestCase
     }
 
     /**
-     * @return array{order: Order, variant: \App\Models\ProductVariant}
+     * @return array{order: Order, variant: ProductVariant}
      */
     private function pedidoConItem(int $stock = 10, int $cantidad = 2, float $precio = 500): array
     {
@@ -154,6 +158,35 @@ class PedidosTest extends TestCase
         // No debe duplicar la venta si vuelve a saldarse (idempotente al estar ya ligado).
         $service->registerPayment($order->fresh(), 100, 'cash');
         $this->assertSame(8, $variant->fresh()->stock_quantity);
+    }
+
+    public function test_crear_pedido_con_abono_sin_stock_deja_el_pedido_creado(): void
+    {
+        $tenant = $this->tenant();
+        Auth::login($this->boutiqueUser($tenant));
+        Filament::setCurrentPanel(Filament::getPanel('boutique'));
+
+        $product = Product::create(['name' => 'Agotado', 'default_price' => 500]);
+        $variant = $product->variants()->create(['price' => 500, 'cost' => 200, 'stock_quantity' => 0]);
+
+        Livewire::test(CreateOrder::class)
+            ->fillForm([
+                'type' => 'recogida',
+                'discount_type' => 'fixed',
+                'discount_value' => 0,
+                'items' => [
+                    ['product_variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 500],
+                ],
+                'abono' => 500,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $order = Order::query()->latest('id')->first();
+        $this->assertNotNull($order);
+        $this->assertNull($order->sale_id);
+        $this->assertSame(0.0, (float) $order->paid);
+        $this->assertSame('unpaid', $order->payment_status);
     }
 
     public function test_no_genera_venta_si_no_hay_stock_suficiente(): void
