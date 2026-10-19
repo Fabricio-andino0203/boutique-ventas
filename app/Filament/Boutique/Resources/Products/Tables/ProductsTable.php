@@ -16,7 +16,7 @@ class ProductsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['category', 'supplier', 'brand']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('type', '!=', 'combo')->with(['category', 'supplier', 'brand']))
             ->columns([
                 ImageColumn::make('image_path')
                     ->label('')

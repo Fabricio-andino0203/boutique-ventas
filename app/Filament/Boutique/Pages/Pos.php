@@ -4,8 +4,12 @@ namespace App\Filament\Boutique\Pages;
 
 use App\Actions\RegisterSale;
 use App\Models\CashRegister;
+use App\Models\Combo;
+use App\Models\ComboItem;
 use App\Models\Customer;
 use App\Models\ProductVariant;
+use App\Services\ComboPricing;
+use App\Services\ComboService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -29,7 +33,10 @@ class Pos extends Page
     protected static ?int $navigationSort = -10;
 
     /**
-     * @var array<int, array{id:int, label:string, price:float, qty:int, stock:int}>
+     * Carrito. La clave es un string: 'v{id}' para variantes normales y
+     * 'c{comboId}-{variantesElegidas}' para combos.
+     *
+     * @var array<string, array{key:string, label:string, price:float, qty:int, stock:int, variant_id:int, is_combo:bool, combo_id:int|null, components:array<int, array{variant_id:int, quantity:int}>|null}>
      */
     public array $cart = [];
 
@@ -42,6 +49,16 @@ class Pos extends Page
     public float $amountPaid = 0;
 
     public float $discount = 0;
+
+    /** Combo que se está configurando (elección de variantes "a elegir"). */
+    public ?int $comboSelecting = null;
+
+    /**
+     * Variante elegida por cada componente del combo en configuración.
+     *
+     * @var array<int, int|null>
+     */
+    public array $comboSelections = [];
 
     public static function getNavigationLabel(): string
     {
@@ -65,17 +82,19 @@ class Pos extends Page
             return collect();
         }
 
-        $term = '%'.trim($this->search).'%';
+        // Búsqueda sin distinguir mayúsculas, compatible con SQLite (dev) y
+        // PostgreSQL (prod): lower(col) like lower(término).
+        $term = '%'.mb_strtolower(trim($this->search)).'%';
 
         return ProductVariant::query()
             ->where('is_active', true)
             ->with('product')
             ->where(function ($query) use ($term): void {
-                $query->where('sku', 'ilike', $term)
-                    ->orWhere('barcode', 'ilike', $term)
-                    ->orWhere('color', 'ilike', $term)
-                    ->orWhere('size', 'ilike', $term)
-                    ->orWhereHas('product', fn ($q) => $q->where('name', 'ilike', $term));
+                $query->whereRaw('lower(sku) like ?', [$term])
+                    ->orWhereRaw('lower(barcode) like ?', [$term])
+                    ->orWhereRaw('lower(color) like ?', [$term])
+                    ->orWhereRaw('lower(size) like ?', [$term])
+                    ->orWhereHas('product', fn ($q) => $q->whereRaw('lower(name) like ?', [$term]));
             })
             ->limit(12)
             ->get();
@@ -105,15 +124,27 @@ class Pos extends Page
 
     public function addToCart(int $variantId): void
     {
-        if (isset($this->cart[$variantId])) {
-            $this->incrementQty($variantId);
+        $variant = ProductVariant::query()->with('product')->find($variantId);
+
+        if ($variant === null) {
+            return;
+        }
+
+        if (($variant->product->type ?? null) === 'combo') {
+            $this->startCombo($variant);
 
             return;
         }
 
-        $variant = ProductVariant::query()->with('product')->find($variantId);
+        $key = 'v'.$variant->id;
 
-        if ($variant === null || $variant->stock_quantity < 1) {
+        if (isset($this->cart[$key])) {
+            $this->incrementQty($key);
+
+            return;
+        }
+
+        if ($variant->stock_quantity < 1) {
             Notification::make()->title('Sin existencias')->danger()->send();
 
             return;
@@ -121,46 +152,225 @@ class Pos extends Page
 
         $label = trim(($variant->product->name ?? 'Producto').' '.collect([$variant->size, $variant->color, $variant->model])->filter()->implode(' / '));
 
-        $this->cart[$variantId] = [
-            'id' => $variant->id,
+        $this->cart[$key] = [
+            'key' => $key,
             'label' => $label,
             'price' => (float) $variant->price,
             'qty' => 1,
             'stock' => (int) $variant->stock_quantity,
+            'variant_id' => $variant->id,
+            'is_combo' => false,
+            'combo_id' => null,
+            'components' => null,
         ];
 
         $this->search = '';
     }
 
-    public function incrementQty(int $variantId): void
+    /**
+     * Inicia el flujo de un combo: si tiene componentes "a elegir" abre el
+     * selector; si no, lo agrega directo.
+     */
+    private function startCombo(ProductVariant $comboVariant): void
     {
-        if (! isset($this->cart[$variantId])) {
+        $combo = Combo::query()
+            ->with('items.product')
+            ->where('product_variant_id', $comboVariant->id)
+            ->first();
+
+        if ($combo === null) {
             return;
         }
 
-        if ($this->cart[$variantId]['qty'] < $this->cart[$variantId]['stock']) {
-            $this->cart[$variantId]['qty']++;
+        $hasChoices = $combo->items->contains(fn (ComboItem $item): bool => $item->isChooseAtSale());
+
+        if (! $hasChoices) {
+            $this->putComboInCart($combo, []);
+            $this->search = '';
+
+            return;
+        }
+
+        // Prepara el selector con la variante más barata por defecto.
+        $this->comboSelections = [];
+        foreach ($combo->items as $item) {
+            if ($item->isChooseAtSale()) {
+                $this->comboSelections[$item->id] = $item->eligibleVariants()->first()?->id;
+            }
+        }
+
+        $this->comboSelecting = $combo->id;
+    }
+
+    /** Confirma la elección de variantes del combo y lo agrega al carrito. */
+    public function confirmCombo(): void
+    {
+        $combo = Combo::query()->with('items.product')->find($this->comboSelecting);
+
+        if ($combo === null) {
+            $this->cancelCombo();
+
+            return;
+        }
+
+        $selections = [];
+        foreach ($combo->items as $item) {
+            if ($item->isChooseAtSale()) {
+                $variantId = $this->comboSelections[$item->id] ?? null;
+                if ($variantId === null) {
+                    Notification::make()->title('Elegí una variante para cada producto')->warning()->send();
+
+                    return;
+                }
+                $selections[$item->id] = (int) $variantId;
+            }
+        }
+
+        $this->putComboInCart($combo, $selections);
+        $this->cancelCombo();
+        $this->search = '';
+    }
+
+    public function cancelCombo(): void
+    {
+        $this->comboSelecting = null;
+        $this->comboSelections = [];
+    }
+
+    /**
+     * Arma la línea del combo (precio con recargos, componentes y stock) y la
+     * agrega al carrito.
+     *
+     * @param  array<int, int>  $selections  combo_item_id => variant_id elegido
+     */
+    private function putComboInCart(Combo $combo, array $selections): void
+    {
+        $combo->loadMissing('items.product', 'variant');
+
+        $chosenByItem = [];
+        $components = [];
+        $labelParts = [];
+
+        foreach ($combo->items as $item) {
+            $variantId = $item->isChooseAtSale()
+                ? ($selections[$item->id] ?? null)
+                : $item->product_variant_id;
+
+            $variant = $variantId ? ProductVariant::find($variantId) : null;
+
+            if ($variant !== null) {
+                $chosenByItem[$item->id] = $variant;
+                $components[] = ['variant_id' => $variant->id, 'quantity' => max(1, (int) $item->quantity)];
+                $desc = collect([$variant->size, $variant->color, $variant->model])->filter()->implode(' ');
+                $labelParts[] = ($item->product?->name ?? 'Producto').($desc !== '' ? " ($desc)" : '');
+            }
+        }
+
+        $price = app(ComboPricing::class)->priceForSelections($combo, $chosenByItem);
+
+        $available = $combo->stock_mode === 'own'
+            ? (int) $combo->stock_quantity
+            : app(ComboService::class)->derivedAvailability($combo);
+
+        if ($available < 1) {
+            Notification::make()->title('Sin existencias para el combo')->danger()->send();
+
+            return;
+        }
+
+        $key = 'c'.$combo->id.'-'.implode('_', $selections);
+
+        if (isset($this->cart[$key])) {
+            $this->incrementQty($key);
+
+            return;
+        }
+
+        $this->cart[$key] = [
+            'key' => $key,
+            'label' => $combo->name.' · '.implode(' + ', $labelParts),
+            'price' => $price,
+            'qty' => 1,
+            'stock' => $available,
+            'variant_id' => $combo->product_variant_id,
+            'is_combo' => true,
+            'combo_id' => $combo->id,
+            // Stock propio: sin componentes (se descuenta la variante combo).
+            'components' => $combo->stock_mode === 'own' ? null : $components,
+        ];
+    }
+
+    /**
+     * Variantes elegibles por componente del combo en configuración, con su recargo.
+     *
+     * @return array<int, array{item:ComboItem, options:array<int, string>}>
+     */
+    #[Computed]
+    public function comboChoices(): array
+    {
+        $combo = $this->comboSelecting ? Combo::query()->with('items.product')->find($this->comboSelecting) : null;
+
+        if ($combo === null) {
+            return [];
+        }
+
+        $pricing = app(ComboPricing::class);
+        $choices = [];
+
+        foreach ($combo->items as $item) {
+            if (! $item->isChooseAtSale()) {
+                continue;
+            }
+
+            $options = [];
+            foreach ($item->eligibleVariants() as $variant) {
+                $surcharge = $pricing->surcharge($combo, $item, $variant);
+                $desc = collect([$variant->size, $variant->color, $variant->model])->filter()->implode(' / ');
+                $desc = $desc !== '' ? $desc : ($variant->name ?: 'Única');
+                $tag = $surcharge > 0 ? ' (+ L '.number_format($surcharge, 2).')' : ' (sin recargo)';
+                $options[$variant->id] = $desc.$tag;
+            }
+
+            $choices[] = ['item' => $item, 'options' => $options];
+        }
+
+        return $choices;
+    }
+
+    public function comboName(): ?string
+    {
+        return $this->comboSelecting ? Combo::find($this->comboSelecting)?->name : null;
+    }
+
+    public function incrementQty(string $key): void
+    {
+        if (! isset($this->cart[$key])) {
+            return;
+        }
+
+        if ($this->cart[$key]['qty'] < $this->cart[$key]['stock']) {
+            $this->cart[$key]['qty']++;
         } else {
             Notification::make()->title('Alcanzaste el stock disponible')->warning()->send();
         }
     }
 
-    public function decrementQty(int $variantId): void
+    public function decrementQty(string $key): void
     {
-        if (! isset($this->cart[$variantId])) {
+        if (! isset($this->cart[$key])) {
             return;
         }
 
-        $this->cart[$variantId]['qty']--;
+        $this->cart[$key]['qty']--;
 
-        if ($this->cart[$variantId]['qty'] < 1) {
-            unset($this->cart[$variantId]);
+        if ($this->cart[$key]['qty'] < 1) {
+            unset($this->cart[$key]);
         }
     }
 
-    public function removeFromCart(int $variantId): void
+    public function removeFromCart(string $key): void
     {
-        unset($this->cart[$variantId]);
+        unset($this->cart[$key]);
     }
 
     public function subtotal(): float
@@ -181,11 +391,22 @@ class Pos extends Page
     public function register(RegisterSale $action): void
     {
         $items = collect($this->cart)
-            ->map(fn (array $item): array => [
-                'variant_id' => $item['id'],
-                'quantity' => $item['qty'],
-                'unit_price' => $item['price'],
-            ])
+            ->map(function (array $item): array {
+                $line = [
+                    'variant_id' => $item['variant_id'],
+                    'quantity' => $item['qty'],
+                    'unit_price' => $item['price'],
+                ];
+
+                if ($item['is_combo']) {
+                    $line['combo_id'] = $item['combo_id'];
+                    if ($item['components'] !== null) {
+                        $line['components'] = $item['components'];
+                    }
+                }
+
+                return $line;
+            })
             ->values()
             ->all();
 
