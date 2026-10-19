@@ -37,6 +37,20 @@ class ProductImages extends Page implements HasActions, HasForms
 
     public bool $onlyWithoutImage = false;
 
+    public int $page = 1;
+
+    public const PER_PAGE = 12;
+
+    public function updatedSearch(): void
+    {
+        $this->page = 1;
+    }
+
+    public function updatedOnlyWithoutImage(): void
+    {
+        $this->page = 1;
+    }
+
     public static function getNavigationLabel(): string
     {
         return 'Imágenes de productos';
@@ -61,6 +75,7 @@ class ProductImages extends Page implements HasActions, HasForms
         $assigner = app(ProductImageAssigner::class);
 
         return Product::query()
+            ->where('type', '!=', 'combo')
             ->with('variants')
             ->when($this->search !== '', fn ($query) => $query->where('name', 'like', '%'.$this->search.'%'))
             ->orderBy('name')
@@ -72,13 +87,48 @@ class ProductImages extends Page implements HasActions, HasForms
     }
 
     /**
+     * Productos de la página actual.
+     *
+     * @return Collection<int, Product>
+     */
+    #[Computed]
+    public function pageProducts(): Collection
+    {
+        return $this->products
+            ->forPage($this->page, self::PER_PAGE)
+            ->values();
+    }
+
+    /**
+     * Metadatos de paginación (desde / hasta / total / última página).
+     *
+     * @return array{from:int, to:int, total:int, lastPage:int}
+     */
+    #[Computed]
+    public function pageInfo(): array
+    {
+        $total = $this->products->count();
+        $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
+        $current = min(max(1, $this->page), $lastPage);
+        $from = $total === 0 ? 0 : ($current - 1) * self::PER_PAGE + 1;
+        $to = min($current * self::PER_PAGE, $total);
+
+        return ['from' => $from, 'to' => $to, 'total' => $total, 'lastPage' => $lastPage];
+    }
+
+    public function goToPage(int $page): void
+    {
+        $this->page = max(1, min($page, $this->pageInfo['lastPage']));
+    }
+
+    /**
      * @return array{total:int, withImage:int}
      */
     #[Computed]
     public function progress(): array
     {
         $assigner = app(ProductImageAssigner::class);
-        $all = Product::query()->with('variants')->get();
+        $all = Product::query()->where('type', '!=', 'combo')->with('variants')->get();
 
         return [
             'total' => $all->count(),
@@ -175,7 +225,7 @@ class ProductImages extends Page implements HasActions, HasForms
                     $assigner->assignByOptionValue($product, $option, $value, $row['image'] ?? null);
                 }
 
-                unset($this->products, $this->progress);
+                unset($this->products, $this->pageProducts, $this->pageInfo, $this->progress);
 
                 Notification::make()->title('Imágenes actualizadas.')->success()->send();
             });
