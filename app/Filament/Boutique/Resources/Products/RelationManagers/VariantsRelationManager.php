@@ -7,6 +7,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -47,6 +48,20 @@ class VariantsRelationManager extends RelationManager
                     ->numeric()
                     ->default(0)
                     ->prefix('L'),
+                TextInput::make('wholesale_price')
+                    ->label('Precio mayorista')
+                    ->numeric()
+                    ->prefix('L'),
+                FileUpload::make('image_path')
+                    ->label('Imagen de la variante')
+                    ->image()
+                    ->disk(config('filesystems.media'))
+                    ->directory('variants')
+                    ->visibility('public')
+                    ->maxSize(5120)
+                    ->imageResizeMode('contain')
+                    ->imageResizeTargetWidth(1000)
+                    ->imageResizeTargetHeight(1000),
                 TextInput::make('stock_quantity')
                     ->label('Existencias')
                     ->required()

@@ -26,8 +26,10 @@ class ProductVariant extends Model
         'model',
         'price',
         'cost',
+        'wholesale_price',
         'stock_quantity',
         'min_stock',
+        'image_path',
         'is_active',
     ];
 
@@ -36,6 +38,7 @@ class ProductVariant extends Model
         return [
             'price' => 'decimal:2',
             'cost' => 'decimal:2',
+            'wholesale_price' => 'decimal:2',
             'stock_quantity' => 'integer',
             'min_stock' => 'integer',
             'is_active' => 'boolean',
