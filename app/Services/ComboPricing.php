@@ -99,16 +99,16 @@ class ComboPricing
 
     /**
      * Precio del combo tras aplicar un % de descuento sobre el "por separado",
-     * redondeado al medio millar (500) como en Scrampi.
+     * redondeado al múltiplo de 5 más cercano (ej. 443 → 445, 449 → 450).
      */
     public function discountedPrice(float $separate, float $percent): float
     {
-        return $this->roundToHalfThousand($separate * (1 - $percent / 100));
+        return $this->roundPrice($separate * (1 - $percent / 100));
     }
 
-    /** Redondea al medio millar (múltiplo de 500) más cercano. */
-    public function roundToHalfThousand(float $value): float
+    /** Redondea al múltiplo de 5 más cercano (ej. 443 → 445, 449 → 450). */
+    public function roundPrice(float $value): float
     {
-        return round($value / 500) * 500;
+        return round($value / 5) * 5;
     }
 }
