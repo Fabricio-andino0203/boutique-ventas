@@ -19,6 +19,8 @@ class ProductVariant extends Model
     protected $fillable = [
         'tenant_id',
         'product_id',
+        'name',
+        'options',
         'sku',
         'barcode',
         'size',
@@ -36,6 +38,7 @@ class ProductVariant extends Model
     protected function casts(): array
     {
         return [
+            'options' => 'array',
             'price' => 'decimal:2',
             'cost' => 'decimal:2',
             'wholesale_price' => 'decimal:2',

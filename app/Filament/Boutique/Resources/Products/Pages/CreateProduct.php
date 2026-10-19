@@ -9,8 +9,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
@@ -41,17 +39,49 @@ class CreateProduct extends CreateRecord
                 ->schema([
                     ToggleButtons::make('type')
                         ->label('Tipo de producto')
-                        ->options(['simple' => 'Simple', 'variable' => 'Variable'])
-                        ->icons(['simple' => Heroicon::OutlinedCube, 'variable' => Heroicon::OutlinedSquares2x2])
+                        ->options(ProductForm::typeOptions())
+                        ->icons([
+                            'simple' => Heroicon::OutlinedCube,
+                            'variable' => Heroicon::OutlinedSquares2x2,
+                            'custom' => Heroicon::OutlinedCurrencyDollar,
+                        ])
                         ->inline()
                         ->default('simple')
+                        ->required()
                         ->live()
+                        ->helperText('Simple: un precio y un inventario. Variable: tallas/colores con su propio precio y stock. Precio personalizado: el cajero ingresa el precio en cada venta.')
                         ->columnSpanFull(),
                     ...ProductForm::basicFields(),
-                    ProductForm::barcodeField()
-                        ->visible(fn (Get $get): bool => $get('type') === 'simple'),
                 ])
                 ->columns(2),
+
+            Step::make('Precio e inventario')
+                ->icon(Heroicon::OutlinedCurrencyDollar)
+                ->schema([
+                    Placeholder::make('variable_nota')
+                        ->label('')
+                        ->content('Estos valores serán los predeterminados para todas las variantes. Podrás ajustarlos individualmente en cada variante.')
+                        ->visible(fn (Get $get): bool => $get('type') === 'variable')
+                        ->columnSpanFull(),
+                    Placeholder::make('custom_nota')
+                        ->label('')
+                        ->content('En "Precio personalizado" el cajero ingresa el precio en cada venta; no se define aquí.')
+                        ->visible(fn (Get $get): bool => $get('type') === 'custom')
+                        ->columnSpanFull(),
+                    ...ProductForm::pricingFields(),
+                    TextInput::make('simple_stock')
+                        ->label('Stock inicial')
+                        ->numeric()
+                        ->default(0)
+                        ->dehydrated(false)
+                        ->visible(fn (Get $get): bool => $get('type') !== 'variable'),
+                    ...ProductForm::optionsAndTaxFields(),
+                ])
+                ->columns(2),
+
+            Step::make('Imágenes')
+                ->icon(Heroicon::OutlinedPhoto)
+                ->schema(ProductForm::imageFields()),
 
             Step::make('Variantes')
                 ->icon(Heroicon::OutlinedSquares2x2)
@@ -68,65 +98,15 @@ class CreateProduct extends CreateRecord
                         ->itemLabel(fn (array $state): string => trim(($state['color'] ?? '').' '.($state['size'] ?? '').' '.($state['model'] ?? '')) ?: 'Variante')
                         ->addActionLabel('Agregar variante'),
                 ]),
-
-            Step::make('Precio e inventario')
-                ->icon(Heroicon::OutlinedCurrencyDollar)
-                ->schema([
-                    // Producto simple: precio, costo, utilidad, stock, etc.
-                    Group::make()
-                        ->visible(fn (Get $get): bool => $get('type') === 'simple')
-                        ->schema([
-                            ...ProductForm::pricingFields(),
-                            TextInput::make('simple_stock')
-                                ->label('Stock inicial')
-                                ->numeric()
-                                ->default(0)
-                                ->dehydrated(false),
-                        ])
-                        ->columns(2),
-                    // Producto variable: impuestos/descuentos a nivel de producto.
-                    Group::make()
-                        ->visible(fn (Get $get): bool => $get('type') === 'variable')
-                        ->schema([
-                            Placeholder::make('variable_nota')
-                                ->label('')
-                                ->content('Los precios, costos y existencias se definen en cada variante (paso anterior). Aquí configurás impuestos y descuentos del producto.')
-                                ->columnSpanFull(),
-                            ...self::productLevelTaxFields(),
-                        ])
-                        ->columns(2),
-                ]),
-
-            Step::make('Imágenes')
-                ->icon(Heroicon::OutlinedPhoto)
-                ->schema([
-                    ProductForm::imageField(),
-                ]),
         ];
-    }
-
-    /**
-     * Impuestos/descuentos a nivel de producto (para producto variable).
-     *
-     * @return array<int, Component>
-     */
-    protected static function productLevelTaxFields(): array
-    {
-        $all = ProductForm::pricingFields();
-
-        // Reutilizamos solo los campos de impuesto/descuento (los últimos tres).
-        return array_values(array_filter($all, function ($component): bool {
-            $name = method_exists($component, 'getName') ? $component->getName() : null;
-
-            return in_array($name, ['allow_discount', 'tax_type', 'tax_rate'], true);
-        }));
     }
 
     protected function afterCreate(): void
     {
         $product = $this->getRecord();
 
-        if (($product->type ?? 'simple') === 'simple') {
+        // Simple y "precio personalizado" tienen una única variante implícita.
+        if (in_array($product->type ?? 'simple', ['simple', 'custom'], true)) {
             ProductForm::syncSimpleVariant($product, $this->data);
         }
     }

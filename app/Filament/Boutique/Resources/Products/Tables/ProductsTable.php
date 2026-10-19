@@ -16,7 +16,7 @@ class ProductsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['category', 'supplier']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['category', 'supplier', 'brand']))
             ->columns([
                 ImageColumn::make('image_path')
                     ->label('')
@@ -30,19 +30,30 @@ class ProductsTable
                     ->toggleable(),
                 TextColumn::make('name')
                     ->label('Producto')
-                    ->description(fn ($record): ?string => $record->brand)
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => $state === 'variable' ? 'Variable' : 'Simple')
-                    ->color(fn (string $state): string => $state === 'variable' ? 'warning' : 'gray'),
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'variable' => 'Variable',
+                        'custom' => 'Precio personalizado',
+                        default => 'Simple',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'variable' => 'warning',
+                        'custom' => 'info',
+                        default => 'gray',
+                    }),
                 TextColumn::make('category.name')
                     ->label('Categoría')
                     ->badge()
                     ->color('primary')
                     ->placeholder('Sin categoría'),
+                TextColumn::make('brand.name')
+                    ->label('Marca')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('supplier.name')
                     ->label('Proveedor')
                     ->placeholder('—')

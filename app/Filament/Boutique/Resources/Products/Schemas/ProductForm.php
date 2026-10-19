@@ -25,6 +25,20 @@ use Illuminate\Support\Facades\Auth;
 class ProductForm
 {
     /**
+     * Opciones del selector de tipo de producto (3 tipos, estilo Scrampi).
+     *
+     * @return array<string, string>
+     */
+    public static function typeOptions(): array
+    {
+        return [
+            'simple' => 'Simple',
+            'variable' => 'Variable',
+            'custom' => 'Precio personalizado',
+        ];
+    }
+
+    /**
      * Formulario de EDICIÓN (por secciones). Las variantes se administran en el
      * gestor de variantes de la propia pantalla de edición.
      */
@@ -36,22 +50,30 @@ class ProductForm
                     ->schema([
                         ToggleButtons::make('type')
                             ->label('Tipo de producto')
-                            ->options(['simple' => 'Simple', 'variable' => 'Variable'])
-                            ->icons(['simple' => Heroicon::OutlinedCube, 'variable' => Heroicon::OutlinedSquares2x2])
+                            ->options(self::typeOptions())
+                            ->icons([
+                                'simple' => Heroicon::OutlinedCube,
+                                'variable' => Heroicon::OutlinedSquares2x2,
+                                'custom' => Heroicon::OutlinedCurrencyDollar,
+                            ])
                             ->inline()
                             ->default('simple')
                             ->disabled()
                             ->dehydrated()
-                            ->helperText('El tipo no se cambia después de crear el producto.'),
+                            ->helperText('El tipo no se cambia después de crear el producto.')
+                            ->columnSpanFull(),
                         ...self::basicFields(),
                     ])
                     ->columns(2),
                 Section::make('Precios e impuestos (referencia)')
                     ->description('En productos variables, el precio real vive en cada variante.')
-                    ->schema(self::pricingFields())
+                    ->schema([
+                        ...self::pricingFields(),
+                        ...self::optionsAndTaxFields(),
+                    ])
                     ->columns(2),
-                Section::make('Imagen')
-                    ->schema([self::imageField()]),
+                Section::make('Imágenes')
+                    ->schema(self::imageFields()),
             ]);
     }
 
@@ -68,35 +90,58 @@ class ProductForm
                 ->required()
                 ->maxLength(255)
                 ->columnSpanFull(),
+            Textarea::make('description')
+                ->label('Descripción')
+                ->placeholder('Opcional')
+                ->rows(2)
+                ->maxLength(1000)
+                ->columnSpanFull(),
             Select::make('category_id')
                 ->label('Categoría')
                 ->options(fn (): array => Category::query()->whereNull('parent_id')->orderBy('name')->pluck('name', 'id')->all())
                 ->searchable()
                 ->preload()
                 ->live()
-                ->afterStateUpdated(fn (Set $set) => $set('subcategory_id', null)),
+                ->placeholder('Opcional')
+                ->afterStateUpdated(fn (Set $set) => $set('subcategory_id', null))
+                ->createOptionForm([
+                    TextInput::make('name')->label('Nombre')->required()->maxLength(255),
+                ])
+                ->createOptionUsing(fn (array $data): int => Category::create(['name' => $data['name']])->getKey()),
             Select::make('subcategory_id')
                 ->label('Subcategoría')
                 ->options(fn (Get $get): array => $get('category_id')
                     ? Category::query()->where('parent_id', $get('category_id'))->orderBy('name')->pluck('name', 'id')->all()
                     : [])
                 ->searchable()
-                ->placeholder('Opcional'),
-            TextInput::make('brand')
+                ->placeholder('Opcional')
+                ->createOptionForm([
+                    TextInput::make('name')->label('Nombre')->required()->maxLength(255),
+                ])
+                ->createOptionUsing(fn (array $data, Get $get): ?int => $get('category_id')
+                    ? Category::create(['name' => $data['name'], 'parent_id' => $get('category_id')])->getKey()
+                    : null),
+            Select::make('brand_id')
                 ->label('Marca')
-                ->maxLength(255),
+                ->relationship('brand', 'name')
+                ->searchable()
+                ->preload()
+                ->placeholder('Opcional')
+                ->createOptionForm([
+                    TextInput::make('name')->label('Nombre')->required()->maxLength(255),
+                ]),
+            self::barcodeField(),
             Select::make('supplier_id')
                 ->label('Proveedor')
                 ->relationship('supplier', 'name')
                 ->searchable()
                 ->preload()
-                ->placeholder('Opcional'),
-            TextInput::make('code')
-                ->label('Código')
-                ->maxLength(255)
-                ->placeholder('Interno (opcional)'),
+                ->placeholder('Opcional')
+                ->createOptionForm([
+                    TextInput::make('name')->label('Nombre')->required()->maxLength(255),
+                ]),
             Select::make('unit')
-                ->label('Unidad')
+                ->label('Unidad de medida')
                 ->options([
                     'Unidad' => 'Unidad',
                     'Par' => 'Par',
@@ -111,16 +156,11 @@ class ProductForm
                 ->searchable()
                 ->default('Unidad')
                 ->placeholder('Seleccioná una unidad'),
-            Textarea::make('description')
-                ->label('Descripción')
-                ->rows(2)
-                ->maxLength(1000)
-                ->columnSpanFull(),
         ];
     }
 
     /**
-     * Código de barras con botón para generarlo. Solo aplica a producto simple.
+     * Código de barras con botón para generar un EAN-13 válido.
      */
     public static function barcodeField(): TextInput
     {
@@ -136,7 +176,8 @@ class ProductForm
     }
 
     /**
-     * Campos de precio / impuestos a nivel de producto.
+     * Precio / costo / stock a nivel de producto (valores por defecto).
+     * Se ocultan en productos de tipo "Precio personalizado".
      *
      * @return array<int, Component>
      */
@@ -148,32 +189,66 @@ class ProductForm
                 ->numeric()
                 ->default(0)
                 ->prefix('L')
-                ->live(onBlur: true),
+                ->live(onBlur: true)
+                ->visible(fn (Get $get): bool => $get('type') !== 'custom'),
             TextInput::make('default_cost')
                 ->label('Costo')
                 ->numeric()
                 ->default(0)
                 ->prefix('L')
-                ->live(onBlur: true),
-            self::utilityPlaceholder('default_price', 'default_cost'),
+                ->live(onBlur: true)
+                ->visible(fn (Get $get): bool => $get('type') !== 'custom'),
+            self::utilityPlaceholder('default_price', 'default_cost')
+                ->visible(fn (Get $get): bool => $get('type') !== 'custom'),
             TextInput::make('wholesale_price')
                 ->label('Precio mayorista')
                 ->numeric()
                 ->prefix('L')
-                ->placeholder('Opcional'),
+                ->placeholder('Opcional')
+                ->visible(fn (Get $get): bool => $get('type') !== 'custom'),
             TextInput::make('min_stock')
                 ->label('Stock mínimo')
                 ->numeric()
                 ->default(0),
+        ];
+    }
+
+    /**
+     * Opciones de inventario e impuestos (estilo Scrampi).
+     *
+     * @return array<int, Component>
+     */
+    public static function optionsAndTaxFields(): array
+    {
+        return [
+            Toggle::make('manage_stock')
+                ->label('Gestionar stock')
+                ->helperText('El stock del producto se descontará al crear una venta.')
+                ->default(true),
+            Toggle::make('variable_price')
+                ->label('Precio variable')
+                ->helperText('Permite modificar el precio al momento de la venta y agregar descuentos.')
+                ->default(false),
+            Toggle::make('allow_negative_stock')
+                ->label('Stock negativo')
+                ->helperText('Permite vender el producto aunque ya no se encuentren existencias.')
+                ->default(false),
             Toggle::make('allow_discount')
                 ->label('Permitir descuentos')
                 ->default(true),
             ToggleButtons::make('tax_type')
                 ->label('Impuesto (ISV)')
                 ->options(['none' => 'Sin impuesto', 'included' => 'Incluido en el precio', 'additional' => 'Adicional'])
+                ->icons([
+                    'none' => Heroicon::OutlinedNoSymbol,
+                    'included' => Heroicon::OutlinedCheckCircle,
+                    'additional' => Heroicon::OutlinedPlusCircle,
+                ])
                 ->inline()
                 ->default('none')
-                ->live(),
+                ->live()
+                ->helperText('Incluido: el precio ya contiene el impuesto. Adicional: se suma al precio (ej. L 100 + 15% = L 115).')
+                ->columnSpanFull(),
             TextInput::make('tax_rate')
                 ->label('Tasa de impuesto (%)')
                 ->numeric()
@@ -200,21 +275,48 @@ class ProductForm
             });
     }
 
-    public static function imageField(): FileUpload
+    /**
+     * Imagen principal + galería + propagación a variantes sin imagen.
+     *
+     * @return array<int, Component>
+     */
+    public static function imageFields(): array
     {
-        return FileUpload::make('image_path')
-            ->label('Imagen principal')
-            ->image()
-            ->disk(config('filesystems.media'))
-            ->directory('products')
-            ->visibility('public')
-            ->maxSize(5120)
-            ->imageResizeMode('contain')
-            ->imageResizeTargetWidth(1200)
-            ->imageResizeTargetHeight(1200)
-            ->imageEditor()
-            ->helperText('Opcional. Máximo 5 MB; se optimiza automáticamente.')
-            ->columnSpanFull();
+        return [
+            FileUpload::make('image_path')
+                ->label('Imagen principal')
+                ->image()
+                ->disk(config('filesystems.media'))
+                ->directory('products')
+                ->visibility('public')
+                ->maxSize(5120)
+                ->imageResizeMode('contain')
+                ->imageResizeTargetWidth(1200)
+                ->imageResizeTargetHeight(1200)
+                ->imageEditor()
+                ->helperText('Portada del producto. Opcional. Máximo 5 MB; se optimiza automáticamente.')
+                ->columnSpanFull(),
+            Toggle::make('propagate_main_image')
+                ->label('Usar la imagen principal en las variantes sin imagen')
+                ->default(false)
+                ->columnSpanFull(),
+            FileUpload::make('gallery')
+                ->label('Galería (hasta 10 imágenes)')
+                ->image()
+                ->multiple()
+                ->reorderable()
+                ->appendFiles()
+                ->maxFiles(10)
+                ->disk(config('filesystems.media'))
+                ->directory('products/gallery')
+                ->visibility('public')
+                ->maxSize(5120)
+                ->imageResizeMode('contain')
+                ->imageResizeTargetWidth(1200)
+                ->imageResizeTargetHeight(1200)
+                ->helperText('Imágenes adicionales para el catálogo.')
+                ->columnSpanFull(),
+        ];
     }
 
     /**
@@ -258,7 +360,7 @@ class ProductForm
     }
 
     /**
-     * Crea la variante única de un producto simple a partir de los datos del form.
+     * Crea la variante única de un producto simple / de precio personalizado.
      *
      * @param  array<string, mixed>  $data
      */
@@ -266,6 +368,7 @@ class ProductForm
     {
         $product->variants()->create([
             'tenant_id' => $product->tenant_id ?? app(CurrentTenant::class)->id() ?? Auth::user()?->tenant_id,
+            'name' => $product->name,
             'sku' => $data['code'] ?? null,
             'barcode' => $data['barcode'] ?? null,
             'price' => $data['default_price'] ?? 0,
