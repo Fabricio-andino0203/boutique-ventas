@@ -66,10 +66,13 @@ class ProductsTable
                     ->label('Precio')
                     ->money('HNL')
                     ->sortable(),
-                TextColumn::make('stock_total')
+                TextColumn::make('variants_sum_stock_quantity')
                     ->label('Stock')
                     ->sum('variants', 'stock_quantity')
+                    ->default(0)
+                    ->formatStateUsing(fn ($state): string => (string) (int) $state)
                     ->badge()
+                    ->color(fn ($state): string => (int) $state <= 0 ? 'danger' : 'success')
                     ->alignCenter(),
                 IconColumn::make('is_active')
                     ->label('Activo')
