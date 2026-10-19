@@ -5,6 +5,7 @@ namespace App\Filament\Boutique\Pages;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\VariantBarcode;
+use App\Support\Barcode;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -63,12 +64,17 @@ class Barcodes extends Page
     }
 
     /**
+     * Productos listos para imprimir: todas sus variantes activas tienen código.
+     * Los que no tienen código se ocultan (se avisan en el banner "Generar códigos").
+     *
      * @return Collection<int, Product>
      */
     #[Computed]
     public function products(): Collection
     {
         return Product::query()
+            ->where('type', '!=', 'combo')
+            ->whereDoesntHave('variants', fn ($v) => $v->where('is_active', true)->whereMissingBarcode())
             ->with('variants')
             ->when($this->search !== '', function ($query): void {
                 $query->where(function ($q): void {
@@ -79,6 +85,60 @@ class Barcodes extends Page
             ->orderBy('name')
             ->limit(50)
             ->get();
+    }
+
+    /** Cuántos productos quedan fuera de la lista por no tener código de barras. */
+    #[Computed]
+    public function productsWithoutBarcode(): int
+    {
+        return Product::query()
+            ->where('type', '!=', 'combo')
+            ->whereHas('variants', fn ($v) => $v->where('is_active', true)->whereMissingBarcode())
+            ->count();
+    }
+
+    /** Genera un EAN-13 para toda variante activa que no tenga código. */
+    public function generarCodigos(): void
+    {
+        $service = app(VariantBarcode::class);
+
+        ProductVariant::query()
+            ->where('is_active', true)
+            ->whereMissingBarcode()
+            ->whereHas('product', fn ($p) => $p->where('type', '!=', 'combo'))
+            ->get()
+            ->each(fn (ProductVariant $variant) => $service->ensure($variant));
+
+        unset($this->products, $this->productsWithoutBarcode);
+
+        Notification::make()->title('Códigos generados')->success()->send();
+    }
+
+    /**
+     * Vista previa de las etiquetas seleccionadas (una por ítem, hasta 24),
+     * con el SVG del EAN-13 ya calculado según las opciones elegidas.
+     *
+     * @return array<int, array{name:string, code:string, price:float, svg:string}>
+     */
+    #[Computed]
+    public function previewLabels(): array
+    {
+        $labels = [];
+
+        foreach (array_slice(array_values($this->selected), 0, 24) as $item) {
+            if (! Barcode::isValidEan13($item['code'] ?? '')) {
+                continue;
+            }
+
+            $labels[] = [
+                'name' => $item['name'],
+                'code' => $item['code'],
+                'price' => (float) $item['price'],
+                'svg' => Barcode::ean13Svg($item['code'], moduleWidth: 1.4, barHeight: 38, showText: false),
+            ];
+        }
+
+        return $labels;
     }
 
     #[Computed]
@@ -120,6 +180,24 @@ class Barcodes extends Page
         }
 
         $this->toggleExpand($productId);
+    }
+
+    /** Agrega todas las variantes de un producto (botón "+" de la fila). */
+    public function addProductAll(int $productId): void
+    {
+        $product = Product::with('variants')->find($productId);
+        if (! $product) {
+            return;
+        }
+
+        foreach ($product->variants as $variant) {
+            if ($this->totalLabels >= self::MAX_LABELS) {
+                $this->warnMax();
+
+                return;
+            }
+            $this->addVariant($variant->id);
+        }
     }
 
     public function addVariant(int $variantId): void

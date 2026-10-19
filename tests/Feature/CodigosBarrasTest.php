@@ -158,4 +158,45 @@ class CodigosBarrasTest extends TestCase
         // 2 etiquetas => 2 SVG de barras.
         $this->assertSame(2, substr_count($response->getContent(), '<svg'));
     }
+
+    public function test_productos_sin_codigo_se_ocultan_y_generar_codigos_los_incluye(): void
+    {
+        $this->login();
+        $product = Product::create(['name' => 'ProductoSinCodigoXyz', 'default_price' => 100]);
+        $product->variants()->create(['price' => 100, 'stock_quantity' => 3, 'barcode' => null]);
+
+        // Sin código: no aparece en la lista y el banner lo cuenta.
+        Livewire::test(Barcodes::class)
+            ->assertDontSee('ProductoSinCodigoXyz')
+            ->assertSet('productsWithoutBarcode', 1)
+            ->call('generarCodigos')
+            ->assertSet('productsWithoutBarcode', 0)
+            ->assertSee('ProductoSinCodigoXyz');
+
+        $this->assertTrue(Barcode::isValidEan13($product->variants()->first()->fresh()->barcode));
+    }
+
+    public function test_vista_previa_devuelve_el_svg_del_codigo(): void
+    {
+        $this->login();
+        $variant = $this->variant();
+
+        $labels = Livewire::test(Barcodes::class)
+            ->call('addVariant', $variant->id)
+            ->instance()
+            ->previewLabels;
+
+        $this->assertCount(1, $labels);
+        $this->assertStringContainsString('<svg', $labels[0]['svg']);
+        $this->assertSame($variant->fresh()->barcode, $labels[0]['code']);
+    }
+
+    public function test_los_combos_no_aparecen_en_codigos_de_barras(): void
+    {
+        $this->login();
+        $combo = Product::create(['type' => 'combo', 'name' => 'ComboNoListadoXyz', 'default_price' => 100]);
+        $combo->variants()->create(['price' => 100, 'stock_quantity' => 1, 'barcode' => Barcode::generateEan13()]);
+
+        Livewire::test(Barcodes::class)->assertDontSee('ComboNoListadoXyz');
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use Database\Factories\ProductVariantFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,18 @@ class ProductVariant extends Model
             'min_stock' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Variantes sin código de barras (nulo o vacío).
+     *
+     * @param  Builder<ProductVariant>  $query
+     */
+    public function scopeWhereMissingBarcode(Builder $query): void
+    {
+        $query->where(function (Builder $q): void {
+            $q->whereNull('barcode')->orWhere('barcode', '');
+        });
     }
 
     /**
